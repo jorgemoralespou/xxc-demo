@@ -1,0 +1,217 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xcc-dns
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dns-server
+  namespace: xcc-dns
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-server
+  namespace: xcc-dns
+  labels:
+    app: dns-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dns-server
+  template:
+    metadata:
+      labels:
+        app: dns-server
+    spec:
+      serviceAccountName: dns-server
+      containers:
+      - name: dns-server
+        image: gcr.io/tanzu-xcc/dns-server:dev
+        args: [ "-conf", "/etc/coredns/Corefile" ]
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+          readOnly: true
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+      volumes:
+      - name: config-volume
+        configMap:
+          name: dns-server-corefile
+          items:
+          - key: Corefile
+            path: Corefile
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dns-server
+  namespace: xcc-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dns-server
+subjects:
+- kind: ServiceAccount
+  name: dns-server
+  namespace: xcc-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dns-server
+  namespace: xcc-dns
+rules:
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - watch
+  - get
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dns-server
+  namespace: xcc-dns
+  labels:
+    app: dns-server
+spec:
+  selector:
+    app: dns-server
+  type: ClusterIP
+  ports:
+  - port: 53
+    targetPort: 53
+    protocol: TCP
+    name: dns-tcp
+  - port: 53
+    targetPort: 53
+    protocol: UDP
+    name: dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dns-server-corefile
+  namespace: xcc-dns
+data:
+  Corefile: |
+    . {
+        log
+        errors
+        health {
+          lameduck 5s
+        }
+        crosscluster
+        ready
+        prometheus :9153
+        cache 30
+        reload
+        loop
+        loadbalance
+        whoami
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dns-config-patcher
+  namespace: xcc-dns
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dns-config-patcher
+  namespace: xcc-dns
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 120
+  template:
+    metadata:
+      labels:
+        app: dns-config-patcher
+    spec:
+      serviceAccountName: dns-config-patcher
+      restartPolicy: OnFailure
+      containers:
+      - name: dns-config-patcher
+        image: gcr.io/tanzu-xcc/dns-config-patcher:dev
+        env:
+        - name: "DNS_SERVICE_NAMESPACE"
+          value: "xcc-dns"
+        - name: "DNS_SERVICE_NAME"
+          value: "dns-server"
+        - name: "COREFILE_CONFIGMAP_NAMESPACE"
+          value: "kube-system"
+        - name: "COREFILE_CONFIGMAP_NAME"
+          value: "coredns"
+        - name: "DOMAIN_SUFFIX"
+          value: "xcc.test"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dns-config-patcher
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: system-corefile-updater
+subjects:
+- kind: ServiceAccount
+  name: dns-config-patcher
+  namespace: xcc-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dns-config-patcher
+  namespace: xcc-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: xcc-dns-service-watcher
+subjects:
+- kind: ServiceAccount
+  name: dns-config-patcher
+  namespace: xcc-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: system-corefile-updater
+  namespace: kube-system
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs:
+  - get
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: xcc-dns-service-watcher
+  namespace: xcc-dns
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs:
+  - get
