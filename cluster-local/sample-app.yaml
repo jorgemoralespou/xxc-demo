@@ -1,3 +1,5 @@
+#@ load("@ytt:data", "data")
+
 ---
 apiVersion: v1
 kind: Namespace
@@ -51,7 +53,7 @@ metadata:
   namespace: sample
 spec: 
   virtualhost:
-    fqdn: kuard.127.0.0.1.nip.io
+    fqdn: #@ "kuard.{}".format(data.values.local.dns.suffix)
   routes: 
     - conditions:
       - prefix: /

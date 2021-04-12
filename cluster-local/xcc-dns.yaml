@@ -1,3 +1,5 @@
+#@ load("@ytt:data", "data")
+
 ---
 apiVersion: v1
 kind: Namespace
@@ -163,7 +165,7 @@ spec:
         - name: "COREFILE_CONFIGMAP_NAME"
           value: "coredns"
         - name: "DOMAIN_SUFFIX"
-          value: "xcc.test"
+          value: #@ data.values.remote.dns.suffix
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

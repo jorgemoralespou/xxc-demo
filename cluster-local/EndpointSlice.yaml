@@ -1,3 +1,5 @@
+#@ load("@ytt:data", "data")
+
 ---
 apiVersion: discovery.k8s.io/v1beta1
 kind: EndpointSlice
@@ -5,12 +7,8 @@ metadata:
   name: xxc-demo
   namespace: xcc-dns
   annotations:
-    connectivity.tanzu.vmware.com/dns-hostname: '*.xcc.test'
-#addressType: FQDN
-#endpoints:
-#  - addresses:
-#    - "xxc-demo.apps.dev.eduk8s.io"
+    connectivity.tanzu.vmware.com/dns-hostname: #@ '*.{}'.format(data.values.remote.dns.suffix)
 addressType: IPv4
 endpoints:
   - addresses:
-    - "3.120.24.214"
+    - #@ data.values.remote.lb.ip

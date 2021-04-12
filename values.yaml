@@ -1,0 +1,11 @@
+#@data/values
+---
+local:
+  dns:
+    suffix: 127.0.0.1.nip.io
+remote:
+  dns:
+    suffix: cluster.remote
+    realsuffix: dev.eduk8s.io
+  lb:
+    ip: "3.120.24.214"

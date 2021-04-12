@@ -1,31 +1,34 @@
+#@ load("@ytt:data", "data")
+
+---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: xxc-demo
+  name: xcc-demo
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: xxc-demo
-  namespace: xxc-demo
+  name: xcc-demo
+  namespace: xcc-demo
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: xxc-demo
+      app: xcc-demo
   template:
     metadata:
       labels:
-        app: xxc-demo
+        app: xcc-demo
     spec:
       containers:
-      - name: xxc-demo
+      - name: xcc-demo
         image: docker.io/jorgemoralespou/xcc-demo-sample-app:latest
         env:
         - name: PORT
           value: "8080"
         - name: REMOTE_SERVICE
-          value: xxc-demo.xcc.test
+          value: #@ "xcc-demo.{}".format(data.values.remote.dns.suffix)
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -33,11 +36,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: xxc-demo
-  namespace: xxc-demo
+  name: xcc-demo
+  namespace: xcc-demo
 spec:
   selector:
-    app: xxc-demo
+    app: xcc-demo
   ports:
   - protocol: TCP
     port: 8080
@@ -47,16 +50,16 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: xxc-demo
-  namespace: xxc-demo
+  name: xcc-demo
+  namespace: xcc-demo
 spec:
   rules:
-  - host: xxc-demo.127.0.0.1.nip.io
+  - host: #@ "xcc-demo.{}".format(data.values.local.dns.suffix)
     http:
       paths:
       - backend:
           service: 
-            name: xxc-demo
+            name: xcc-demo
             port: 
               number: 8080
         path: /
