@@ -40,7 +40,7 @@ spec:
   - protocol: TCP
     port: 8080
     targetPort: 8080
-  type: ClusterIP
+  type: LoadBalancer
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -50,6 +50,16 @@ metadata:
 spec:
   rules:
   - host: "xxc-demo.apps.dev.eduk8s.io"
+    http:
+      paths:
+      - backend:
+          service: 
+            name: xxc-demo
+            port: 
+              number: 8080
+        path: /
+        pathType: ImplementationSpecific
+  - host: "xxc-demo.xcc.test"
     http:
       paths:
       - backend:

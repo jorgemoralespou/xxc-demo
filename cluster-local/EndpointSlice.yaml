@@ -6,7 +6,11 @@ metadata:
   namespace: xcc-dns
   annotations:
     connectivity.tanzu.vmware.com/dns-hostname: '*.xcc.test'
-addressType: FQDN
+#addressType: FQDN
+#endpoints:
+#  - addresses:
+#    - "xxc-demo.apps.dev.eduk8s.io"
+addressType: IPv4
 endpoints:
   - addresses:
-    - "xxc-demo.apps.dev.eduk8s.io"
+    - "3.120.24.214"
